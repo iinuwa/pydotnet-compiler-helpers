@@ -228,6 +228,20 @@ class TargetInfo:
                 return any(magic == m for m in Magic)
 
 
+class BinaryUtils:
+    @staticmethod
+    def write_7_bit_int(writer: BinaryIO, num: int):
+        # Write out an int 7 bits at a time. The high bit of the byte,
+        # when on, tells reader to continue reading more bytes.
+        uvalue = num
+        print(uvalue)
+        while (uvalue > 0x7f):
+            writer.write((uvalue | ~0x7F).to_bytes(1, byteorder='little'))
+            uvalue = uvalue >> 7
+
+        writer.write(uvalue.to_bytes(1, byteorder='little'))
+
+
 class FileEntry:
     def __init__(self,
                  file_type: FileType,
@@ -250,21 +264,7 @@ class FileEntry:
             writer.write(struct.pack('<q', self.compressed_size))
 
         writer.write(struct.pack('c', self.file_type.value))
-        print(struct.pack('c', self.file_type.value))
-
-        # Write out an int 7 bits at a time. The high bit of the byte,
-        # when on, tells reader to continue reading more bytes.
-        #
-        # Using the constants 0x7F and ~0x7F below offers smaller
-        # codegen than using the constant 0x80.
-        relative_path_len = len(self.relative_path)
-        uvalue = relative_path_len
-        print(uvalue)
-        while (uvalue > 0x7f):
-            writer.write((uvalue | ~0x7F).to_bytes(1, byteorder='little'))
-            uvalue = uvalue >> 7
-
-        writer.write(uvalue.to_bytes(1, byteorder='little'))
+        BinaryUtils.write_7_bit_int(writer, len(self.relative_path))
         writer.write(bytes(self.relative_path, encoding='utf-8'))
 
 
@@ -364,7 +364,7 @@ class Manifest:
         writer.write(struct.pack('<I', self.bundle_major_version))
         writer.write(struct.pack('<I', self.bundle_minor_version))
         writer.write(struct.pack('<i', len(self.files)))
-        writer.write(b'\x20')  # TODO: WHERE IS THIS COMING FROM?
+        BinaryUtils.write_7_bit_int(writer, len(self.bundle_id))
         writer.write(self.bundle_id)
 
         if self.bundle_major_version >= 2:
