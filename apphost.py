@@ -2,7 +2,7 @@
 Create an apphost executable based on a DLL. Based on the [original .NET
 HostWriter implementation][host-writer-cs].
 
-[host-writer-cs]: https://github.com/dotnet/runtime/blob/2cf48266341bafa60006ee2cd0f5696d63bb8151/src/installer/managed/Microsoft.NET.HostModel/AppHost/HostWriter.cs
+[host-writer-cs]: https://github.com/dotnet/runtime/blob/2cf48266341bafa60006ee2cd0f5696d63bb8151/src/installer/managed/Microsoft.NET.HostModel/AppHost/HostWriter.cs  # noqa: E501
 """
 from mmap import mmap, ACCESS_COPY
 import os
@@ -17,19 +17,19 @@ from typing import BinaryIO
 # if platform.system() == 'Windows':
 #     import ctypes
 #     kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-# 
-# 
+#
+#
 # class HostModelUtils:
 #     codesign_path = '/usr/bin/codesign'
-# 
+#
 #     @staticmethod
-#     def is_code_sign_available() -> bool:
+#     def is_codesign_available() -> bool:
 #         return os.path.exists(HostModelUtils.codesign_path)
-# 
+#
 #     @staticmethod
-#     def run_code_sign(args: Sequence[str], app_host_path: str) -> tuple[Optional[int], Optional[str]]:
+#     def run_codesign(args: Sequence[str], app_host_path: str) -> tuple[Optional[int], Optional[str]]:
 #         assert(platform.system() == 'Darwin')
-#         assert(HostModelUtils.is_code_sign_available())
+#         assert(HostModelUtils.is_codesign_available())
 #         process = subprocess.run(
 #             [HostModelUtils.codesign_path] + args, capture_output=True)
 #         return (process.returncode, process.stderr)
@@ -60,7 +60,7 @@ APP_BINARY_PATH_PLACEHOLDER_SEARCH_VALUE = b"c3ab8ff13720e8ad9047dd39466b3c8974e
 # class ResourceUpdater():
 #     def init(pe_file_path: str):
 #         pass
-# 
+#
 #     @staticmethod
 #     def is_supported_os() -> bool:
 #         """
@@ -86,7 +86,7 @@ APP_BINARY_PATH_PLACEHOLDER_SEARCH_VALUE = b"c3ab8ff13720e8ad9047dd39466b3c8974e
 #             # TODO: Test if EntryPointNotFound error
 #             return False
 #         return True
-# 
+#
 #     def add_resources_from_pe_image(self, path: str):
 #         return self
 
@@ -97,7 +97,7 @@ def create_app_host(
         app_binary_file_path: str,
         windows_graphical_user_interface: bool = False,
         assembly_to_copy_resources_from: str = None,
-        enable_macos_code_sign: bool = False):
+        enable_macos_codesign: bool = False):
 
     bytes_to_write = app_binary_file_path.encode('utf-8')
     PATH_NAME_REGION_SIZE = 1024
@@ -143,6 +143,7 @@ def create_app_host(
             with mmap(app_host_source_stream.fileno(), 0, access=ACCESS_COPY) as memory_mapped_file:
                 # source_app_host_length = len(app_host_source_stream)
                 _rewrite_app_host(memory_mapped_file)
+                os.makedirs(os.path.dirname(app_host_destination_file_path))
                 with open(app_host_destination_file_path, 'wb') as file_stream:
                     file_stream.write(memory_mapped_file)
                     # BinaryUtils.write_to_stream(
@@ -160,9 +161,9 @@ def create_app_host(
                 raise Exception(
                     f"Could not set file permission {file_permission} for {app_host_destination_file_path}")
 
-            # if enable_macos_code_sign and platform.system() == 'Darwin' and HostModelUtils.is_code_sign_available():
+            # if enable_macos_codesign and platform.system() == 'Darwin' and HostModelUtils.is_codesign_available():
             #     try:
-            #         HostModelUtils.run_code_sign(
+            #         HostModelUtils.run_codesign(
             #             ['-s', '-'], app_host_destination_file_path)
             #     except Exception:
             #         raise Exception("Signing apphost executable failed")
@@ -174,5 +175,6 @@ def create_app_host(
         raise e
 
 
-create_app_host(sys.argv[1], sys.argv[2], sys.argv[3],
-                assembly_to_copy_resources_from=sys.argv[4])
+if __name__ == '__main__':
+    create_app_host(sys.argv[1], sys.argv[2], sys.argv[3],
+                    assembly_to_copy_resources_from=sys.argv[4])

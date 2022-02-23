@@ -230,11 +230,10 @@ class TargetInfo:
 
 class BinaryUtils:
     @staticmethod
-    def write_7_bit_int(writer: BinaryIO, num: int):
+    def write_7_bit_encoded_int(writer: BinaryIO, num: int):
         # Write out an int 7 bits at a time. The high bit of the byte,
         # when on, tells reader to continue reading more bytes.
         uvalue = num
-        print(uvalue)
         while (uvalue > 0x7f):
             writer.write((uvalue | ~0x7F).to_bytes(1, byteorder='little'))
             uvalue = uvalue >> 7
@@ -264,7 +263,7 @@ class FileEntry:
             writer.write(struct.pack('<q', self.compressed_size))
 
         writer.write(struct.pack('c', self.file_type.value))
-        BinaryUtils.write_7_bit_int(writer, len(self.relative_path))
+        BinaryUtils.write_7_bit_encoded_int(writer, len(self.relative_path))
         writer.write(bytes(self.relative_path, encoding='utf-8'))
 
 
@@ -364,7 +363,7 @@ class Manifest:
         writer.write(struct.pack('<I', self.bundle_major_version))
         writer.write(struct.pack('<I', self.bundle_minor_version))
         writer.write(struct.pack('<i', len(self.files)))
-        BinaryUtils.write_7_bit_int(writer, len(self.bundle_id))
+        BinaryUtils.write_7_bit_encoded_int(writer, len(self.bundle_id))
         writer.write(self.bundle_id)
 
         if self.bundle_major_version >= 2:
@@ -381,7 +380,6 @@ class Manifest:
             )
 
             writer.write(struct.pack('<Q', self.flags))
-            print(struct.pack('<Q', self.flags))
 
         for entry in self.files:
             entry.write(writer)
@@ -725,7 +723,6 @@ class Bundler:
             misalignment = bundle.tell() % self.target.assembly_alignment
             if misalignment != 0:
                 padding = self.target.assembly_alignment - misalignment
-                # bundle.seek(padding, SEEK_CUR)
                 bundle.write(bytearray(padding))
         file_to_bundle.seek(0)
         start_offset = bundle.tell()
